@@ -8,7 +8,7 @@ load_dotenv()
 tools = Tools()
 
 @tools.action(description='Login to email provider')
-async def login_with_google(browser_session: BrowserSession) -> ActionResult:
+async def login_to_provider(browser_session: BrowserSession) -> ActionResult:
     """
     Login to the email provider. currently it gives time for the user to login manually.
     """
@@ -31,7 +31,7 @@ async def unsubscribe_by_request(user_request: str) -> str:
         You are a helpful assistant that helps users unsubscribe from marketing or notification emails across common email providers (e.g., Gmail, Outlook, Yahoo).
 
         Follow this generic, provider-agnostic flow:
-        1) Sign-in: Ensure the user is logged in to their email account. If using Google accounts, use the "login_with_google" tool to confirm sign-in. Otherwise, navigate the provider's standard sign-in flow.
+        1) Sign-in: Ensure the user is logged in to their email account. use the "login_to_provider" tool to confirm sign-in. Otherwise, navigate the provider's standard sign-in flow.
         2) Find messages: Use the inbox search to locate emails from the target sender/service. Search by sender name, domain, or subject keywords. Prefer official/legitimate emails.
         3) Locate unsubscribe controls: Open a relevant message and look for any of the following:
            - Built-in provider unsubscribe (e.g., Gmail's native "Unsubscribe" banner/button)

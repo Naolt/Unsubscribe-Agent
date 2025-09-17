@@ -2,6 +2,24 @@
 
 Automates unsubscribing from marketing/notification emails via a browser agent, with a Model Context Protocol (MCP) server exposing tools to trigger the flow.
 
+## Currently Implemented Features
+
+- Minimal unsubscribe automation using the browser-use agent.
+
+- Handles common email providers (Gmail, Outlook, Yahoo) with a provider-agnostic flow.
+
+- Supports finding messages, locating unsubscribe links/buttons, and completing opt-outs.
+
+- Returns clear result messages for success, failure, or edge cases (e.g., user not subscribed).
+
+- Manual login via login_to_provider tool (temporary placeholder).
+
+- Basic MCP server exposing:
+
+    - ping() for health check
+
+    - unsubscribe(query: str) to trigger the agent flow
+
 ## Requirements
 - Python 3.13+
 - `uv` or `pip` to install deps
