@@ -1,0 +1,12 @@
+[project]
+name = "unsubscribe-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "browser-use>=0.7.7",
+    "dotenv>=0.9.9",
+    "fastmcp>=2.12.3",
+    "requests>=2.31.0",
+]
