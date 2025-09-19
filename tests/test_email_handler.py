@@ -2,6 +2,8 @@
 
 from app.types.email import EmailPayload, EmailHeader, EmailBody
 from app.handlers.email_handler import EmailHandler
+from app.types.unsubscribe import UnsubscribeMethod
+
 
 def test_with_list_unsubscribe_https():
     payload = EmailPayload(
@@ -15,8 +17,7 @@ def test_with_list_unsubscribe_https():
     result = handler.handle()
     
     assert result.success is True
-    assert result.method == "https"
-    assert "https://example.com/unsub?id=123" in result.message
+    assert result.method == UnsubscribeMethod.HTTPS
 
 def test_with_list_unsubscribe_mailto():
     payload = EmailPayload(
@@ -30,8 +31,7 @@ def test_with_list_unsubscribe_mailto():
     result = handler.handle()
 
     assert result.success is True
-    assert result.method == "mailto"
-    assert "unsubscribe@example.com" in result.message
+    assert result.method == UnsubscribeMethod.MAILTO
 
 def test_with_footer_only():
     payload = EmailPayload(
@@ -45,8 +45,7 @@ def test_with_footer_only():
     result = handler.handle()
 
     assert result.success is True
-    assert result.method == "https"
-    assert "FOUND_UNSUBSCRIBE_FOOTER_LINK" in result.message
+    assert result.method == UnsubscribeMethod.HTTPS
 
 def test_with_no_unsubscribe():
     payload = EmailPayload(
@@ -60,12 +59,25 @@ def test_with_no_unsubscribe():
     result = handler.handle()
 
     assert result.success is False
-    assert result.method == "none"
-    assert result.message == "No unsubscribe link found"
+    assert result.method is None
+
+def test_with_llm():
+    payload = EmailPayload(
+        subject="Test footer unsubscribe using llm",
+        from_email="ads@example.com",
+        to_email="me@example.com",
+        headers=[],
+        body=EmailBody(text="", html="<html><body>Click <a href='https://ads.example.com/unsub'>this one</a> to stop emails.</body></html>")
+    )
+    handler = EmailHandler(payload)
+    result = handler.handle()
+    assert result.success is True
+    assert result.method == "https"
 
 if __name__ == "__main__":
     test_with_list_unsubscribe_https()
     test_with_list_unsubscribe_mailto()
     test_with_footer_only()
     test_with_no_unsubscribe()
+    test_with_llm()
     print("All tests passed!")

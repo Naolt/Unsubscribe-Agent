@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.config import settings  # ensures .env is loaded at startup
 from app.handlers import email_handler
 
 app = FastAPI(title="Unsubscribe Agent API")
