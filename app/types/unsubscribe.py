@@ -6,15 +6,22 @@ from pydantic import BaseModel, Field
 
 
 class ExtractionResult:
-    def __init__(self, https: Optional[str] = None, mailto: Optional[str] = None):
-        self.https = https
-        self.mailto = mailto
+    def __init__(self, https: Optional[list[str]] = None, mailto: Optional[list[str]] = None):
+        self.https = https or []
+        self.mailto = mailto or []
 
     def has_any(self) -> bool:
         return bool(self.https or self.mailto)
 
-    def to_dict(self) -> Dict["UnsubscribeMethod", str]:
-        mapping: Dict["UnsubscribeMethod", str] = {}
+    def get_all_links(self) -> list[str]:
+        """Get all links as a single list"""
+        all_links = []
+        all_links.extend(self.https)
+        all_links.extend(self.mailto)
+        return all_links
+
+    def to_dict(self) -> Dict["UnsubscribeMethod", list[str]]:
+        mapping: Dict["UnsubscribeMethod", list[str]] = {}
         if self.mailto:
             mapping[UnsubscribeMethod.MAILTO] = self.mailto
         if self.https:
@@ -30,11 +37,11 @@ class UnsubscribeMethod(str, Enum):
 
 class UnsubscribeLinks(BaseModel):
     """Information about unsubscribe links found in an email body."""
-    https: Optional[str] = Field(
-        None, description="The HTTPS or HTTP URL for unsubscribing, if found."
+    https: Optional[list[str]] = Field(
+        None, description="List of HTTPS or HTTP URLs for unsubscribing, if found."
     )
-    mailto: Optional[str] = Field(
-        None, description="The 'mailto:' email address for unsubscribing, if found."
+    mailto: Optional[list[str]] = Field(
+        None, description="List of 'mailto:' email addresses for unsubscribing, if found."
     )
 
 
