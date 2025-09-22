@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
     # Example: DATABASE_URL: Optional[str] = None
+    LLM_MODEL_NAME: Optional[str] = None
+    LLM_MODEL_PROVIDER: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    
 
 
 settings = Settings()

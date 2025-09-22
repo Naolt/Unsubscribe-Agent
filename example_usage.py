@@ -31,7 +31,7 @@ async def main():
     result = await service.process_email(
         email_payload=email_payload,
         user_email="me@example.com",
-        use_llm_only=True  # Set to True to skip body extraction and use only LLM
+        use_llm_only=False  # Set to True to skip body extraction and use only LLM
     )
     
     # Print results

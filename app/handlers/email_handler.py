@@ -5,7 +5,7 @@ import quopri
 from typing import Optional
 from app.types.email import EmailPayload, EmailHeader
 from bs4 import BeautifulSoup
-from app.services.llm_instance import get_gemini_llm
+from app.services.llm_instance import get_gemini_llm, get_llm
 from langchain_core.prompts import ChatPromptTemplate
 
 from app.types.unsubscribe import ExtractionResult, UnsubscribeLinks, UnsubscribeMethod
@@ -306,7 +306,7 @@ Return HTTPS and mailto links as separate lists."""),
                 ("human", "Links to analyze:\n{links_data}"),
             ])
 
-            structured_llm = get_gemini_llm().with_structured_output(UnsubscribeLinks)
+            structured_llm = get_llm().with_structured_output(UnsubscribeLinks)
 
             chain = prompt | structured_llm
 

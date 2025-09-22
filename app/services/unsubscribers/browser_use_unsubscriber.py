@@ -49,7 +49,7 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
             """
 
             # 4. Create and run the agent
-            agent = Agent(task=prompt, browser=browser, llm=llm)
+            agent = Agent(task=prompt, browser=browser, llm=llm , )
             history = await agent.run()
 
             # 5. Extract result
