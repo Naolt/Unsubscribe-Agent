@@ -15,11 +15,14 @@ class Settings(BaseSettings):
     # Add your environment variables here
     GOOGLE_API_KEY: Optional[str] = None
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
+    REDIS_URL: str = "redis://localhost:6379"
     # Example: DATABASE_URL: Optional[str] = None
     LLM_MODEL_NAME: Optional[str] = None
     LLM_MODEL_PROVIDER: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+    USE_LLM_ONLY: bool = False
+    HEADLESS: bool = True
     
 
 

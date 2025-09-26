@@ -1,7 +1,11 @@
+import logging
 from app.config import settings
 from app.services.unsubscribers.base import BaseUnsubscriber
 from app.types.unsubscribe import UnsubscribeMethod, UnsubscriberResult
 from browser_use import Agent, Browser, ChatGoogle, Tools, ActionResult, BrowserSession
+
+logger = logging.getLogger(__name__)
+
 
 class BrowserUseUnsubscriber(BaseUnsubscriber):
     def can_handle(self, method: UnsubscribeMethod) -> bool:
@@ -23,7 +27,9 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
             llm = ChatGoogle(model="gemini-2.5-flash")
 
             # 2. Launch browser
-            browser = Browser(headless=False)
+            logger.info(f"Headless: {settings.HEADLESS}")
+            headless = settings.HEADLESS if settings.HEADLESS else True
+            browser = Browser(headless=headless)
 
             # 3. Define the prompt for the agent
             prompt = f"""
@@ -49,7 +55,7 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
             """
 
             # 4. Create and run the agent
-            agent = Agent(task=prompt, browser=browser, llm=llm , )
+            agent = Agent(task=prompt, browser=browser, llm=llm)
             history = await agent.run()
 
             # 5. Extract result

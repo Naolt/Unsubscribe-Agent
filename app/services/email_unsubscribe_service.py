@@ -164,6 +164,6 @@ def create_email_unsubscribe_service() -> EmailUnsubscribeService:
     mailto_unsubscriber = MailtoUnsubscriber()
     
     # Create unsubscriber orchestrator with all implementations
-    unsubscriber = Unsubscriber([browser_unsubscriber, mailto_unsubscriber])
+    unsubscriber = Unsubscriber([browser_unsubscriber])
     
     return EmailUnsubscribeService(unsubscriber)
