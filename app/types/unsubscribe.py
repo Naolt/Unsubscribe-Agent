@@ -67,3 +67,18 @@ class UnsubscriberResult:
             f"message={self.message}>"
         )
 
+
+
+
+class TaskStatusEnum(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILURE = "failure"
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: TaskStatusEnum
+    message: str | None = None
+    result: dict | None = None
+    error: str | None = None

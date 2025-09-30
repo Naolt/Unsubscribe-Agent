@@ -43,7 +43,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - LOG_LEVEL=INFO
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A app.celery_app worker --loglevel=info -P prefork --concurrency=2
     restart: unless-stopped
     deploy:
       resources:
