@@ -1,14 +1,23 @@
 from enum import Enum
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from app.config import settings  # ensures .env is loaded at startup
 from app.tasks import process_email_task, health_check_task
 from celery.result import AsyncResult
 import logging
+from datetime import datetime
 
 from app.types.email import EmailPayload
 from pydantic import BaseModel
 
 from app.types.unsubscribe import TaskStatusResponse, TaskStatusEnum
+
+
+class EmailData(BaseModel):
+    """Gumloop Gmail Reader data format"""
+    email_bodies: str
+    sender_addresses: str
+    recipient_addresses: str
+    subjects: str
 
 logger = logging.getLogger(__name__)
 
@@ -87,31 +96,24 @@ async def health():
 
 
 @app.post("/webhook")
-async def webhook(email_data: EmailPayload):
+async def webhook(gumloop_data: EmailData):
     """
-    Webhook endpoint that queues email processing for automated unsubscription.
+    Webhook endpoint that processes Gumloop Gmail Reader data for automated unsubscription.
     
     This endpoint:
-    1. Validates the incoming email data
-    2. Queues the email for background processing
-    3. Returns immediately with a task ID
-    4. The actual processing happens in a worker using browser automation
+    1. Receives data in Gumloop Gmail Reader format
+    2. Converts it to internal EmailPayload format
+    3. Queues the email for background processing
+    4. Returns immediately with a task ID
+    5. The actual processing happens in a worker using browser automation
     
-    **Example Request:**
+    **Gumloop Gmail Reader Format:**
     ```json
     {
-      "subject": "FWD: September Newsletter: Rethinking the Timesheet",
-      "from_email": "newsletter@company.com",
-      "to_email": "user@example.com",
-      "headers": [
-        {"name": "From", "value": "newsletter@company.com"},
-        {"name": "To", "value": "user@example.com"},
-        {"name": "Subject", "value": "FWD: September Newsletter: Rethinking the Timesheet"}
-      ],
-      "body": {
-        "text": "Begin forwarded message:\\n\\nFrom: newsletter@company.com\\nTo: user@example.com\\nSubject: September Newsletter: Rethinking the Timesheet\\n\\nSeptember Newsletter: Rethinking the Timesheet\\n\\nDear Subscriber,\\n\\nThis month we are exploring innovative approaches to time tracking and productivity management.\\n\\nKey Highlights:\\n- New time tracking methodologies\\n- Productivity insights and analytics\\n- Team collaboration tools\\n\\nWe hope you find this content valuable. If you have any questions or feedback, please don't hesitate to reach out.\\n\\nYou received this email because you subscribed to our newsletter.\\nUnsubscribe | Manage Preferences",
-        "html": "<!DOCTYPE html><html><head><meta charset=\\"utf-8\\"><title>September Newsletter: Rethinking the Timesheet</title></head><body><div style=\\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\\"><h1 style=\\"color: #333; text-align: center;\\">September Newsletter</h1><h2 style=\\"color: #666;\\">Rethinking the Timesheet</h2><p>Dear Subscriber,</p><p>This month we are exploring innovative approaches to time tracking and productivity management.</p><div style=\\"background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;\\"><h3 style=\\"margin-top: 0;\\">Key Highlights:</h3><ul><li>New time tracking methodologies</li><li>Productivity insights and analytics</li><li>Team collaboration tools</li></ul></div><p>We hope you find this content valuable. If you have any questions or feedback, please don't hesitate to reach out.</p><div style=\\"text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;\\"><p style=\\"font-size: 12px; color: #888;\\">You received this email because you subscribed to our newsletter.</p><p style=\\"font-size: 12px; color: #888;\\"><a href=\\"https://company.com/unsubscribe?token=abc123\\" style=\\"color: #007bff;\\">Unsubscribe</a> | <a href=\\"https://company.com/preferences\\" style=\\"color: #007bff;\\">Manage Preferences</a></p></div></div></body></html>"
-      }
+      "subjects": "Newsletter Title",
+      "sender_addresses": "newsletter@company.com",
+      "recipient_addresses": "user@example.com",
+      "email_bodies": "<html>Email content...</html>"
     }
     ```
     
@@ -126,19 +128,37 @@ async def webhook(email_data: EmailPayload):
     ```
     
     **Testing:**
-    - Use the `/test` endpoint for a quick test with mock data
+    - Use the `/gumloop-test` endpoint for testing data format
     - Check task status with `/task/{task_id}`
     - Monitor progress with Flower dashboard at `/flower`
     """
     try:
-        logger.info(f"Received webhook request with email data: {email_data.subject or 'No subject'}")
+        logger.info(f"Received Gumloop webhook: {gumloop_data.subjects or 'No subject'}")
+        
+        # Convert Gumloop format to internal EmailPayload format
+        email_payload = EmailPayload(
+            subject=gumloop_data.subjects,
+            from_email=gumloop_data.sender_addresses,
+            to_email=gumloop_data.recipient_addresses,
+            headers=[
+                {"name": "From", "value": gumloop_data.sender_addresses},
+                {"name": "To", "value": gumloop_data.recipient_addresses},
+                {"name": "Subject", "value": gumloop_data.subjects}
+            ],
+            body={
+                "text": gumloop_data.email_bodies,  # Assuming HTML, but could be text
+                "html": gumloop_data.email_bodies   # Same content for both
+            }
+        )
+        
+        logger.info(f"Converted to EmailPayload: {email_payload.subject}")
         
         # Validate required fields
-        if not email_data.subject and not email_data.from_email:
+        if not email_payload.subject and not email_payload.from_email:
             raise HTTPException(status_code=400, detail="Missing required email fields")
         
         # Queue the task for background processing
-        task = process_email_task.delay(email_data.dict(), user_email=email_data.from_email)
+        task = process_email_task.delay(email_payload.dict(), user_email=email_payload.from_email)
         
         logger.info(f"Queued email processing task: {task.id}")
         
@@ -146,7 +166,7 @@ async def webhook(email_data: EmailPayload):
             status=TaskStatusEnum.PENDING,
             task_id=task.id,
             message="Email queued for processing",
-            user_email=email_data.from_email
+            user_email=email_payload.from_email
         )
         
     except HTTPException:
@@ -154,6 +174,63 @@ async def webhook(email_data: EmailPayload):
     except Exception as e:
         logger.error(f"Error processing webhook: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.post("/gumloop-test")
+async def gumloop_test(email_data: EmailData):
+    """
+    Test endpoint for Gumloop Gmail Reader integration.
+    
+    This endpoint receives data in Gumloop's Gmail Reader format and logs it.
+    It also shows how to convert it to our internal EmailPayload format.
+    """
+    try:
+        logger.info("=== GUMLOOP GMAIL READER DATA ===")
+        logger.info(f"Subject: {email_data.subjects}")
+        logger.info(f"Sender: {email_data.sender_addresses}")
+        logger.info(f"Recipient: {email_data.recipient_addresses}")
+        logger.info(f"Body length: {len(email_data.email_bodies)} characters")
+        logger.info(f"Body preview: {email_data.email_bodies[:200]}...")
+        logger.info("=== END GUMLOOP DATA ===")
+        
+        # Convert Gumloop format to our internal EmailPayload format
+        converted_payload = EmailPayload(
+            subject=email_data.subjects,
+            from_email=email_data.sender_addresses,
+            to_email=email_data.recipient_addresses,
+            headers=[
+                {"name": "From", "value": email_data.sender_addresses},
+                {"name": "To", "value": email_data.recipient_addresses},
+                {"name": "Subject", "value": email_data.subjects}
+            ],
+            body={
+                "text": email_data.email_bodies,  # Assuming HTML, but could be text
+                "html": email_data.email_bodies   # Same content for both
+            }
+        )
+        
+        logger.info("=== CONVERTED TO INTERNAL FORMAT ===")
+        logger.info(f"Converted payload: {converted_payload.dict()}")
+        logger.info("=== END CONVERSION ===")
+        
+        # Return success response with conversion info
+        return {
+            "status": "received",
+            "message": "Gumloop Gmail Reader data processed successfully",
+            "timestamp": datetime.utcnow().isoformat(),
+            "original_data": {
+                "subject": email_data.subjects,
+                "sender": email_data.sender_addresses,
+                "recipient": email_data.recipient_addresses,
+                "body_length": len(email_data.email_bodies)
+            },
+            "conversion_successful": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in gumloop test endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 @app.get("/task/{task_id}")
 async def get_task_status(task_id: str) -> TaskStatusResponse:
