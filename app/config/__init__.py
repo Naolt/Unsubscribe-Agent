@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     HEADLESS: bool = True
     
 
-
 settings = Settings()
 
 
@@ -59,5 +58,3 @@ def setup_logging():
 
 # Auto-setup logging when module is imported
 setup_logging()
-
-

@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import time
 
 from app.models.domain_crawler import CrawlResult, LinkInfo, PageType
+from app.config.unsubscribe_keywords import UNSUBSCRIBE_URL_PATTERNS
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +130,8 @@ class DomainCrawlerService:
             absolute_url = urljoin(base_url, href)
             parsed_url = urlparse(absolute_url)
             
-            # Only include links from the same domain
-            if parsed_url.netloc != base_domain:
+            # Only include links from the same domain (including subdomains)
+            if parsed_url.netloc != base_domain and not parsed_url.netloc.endswith(f".{base_domain}"):
                 continue
             
             # Determine context (where the link was found)
@@ -178,8 +179,8 @@ class DomainCrawlerService:
         url_lower = url.lower()
         text_content = soup.get_text().lower()
         
-        # Check URL patterns
-        if any(pattern in url_lower for pattern in ['/unsubscribe', '/opt-out', '/preferences']):
+        # Check URL patterns using centralized configuration
+        if any(pattern in url_lower for pattern in UNSUBSCRIBE_URL_PATTERNS):
             return PageType.UNSUBSCRIBE
         
         if any(pattern in url_lower for pattern in ['/privacy', '/legal']):

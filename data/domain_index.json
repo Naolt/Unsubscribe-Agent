@@ -1,0 +1,42 @@
+{
+  "mailchimp.com": {
+    "unsubscribe_url": "https://mailchimp.com/legal/cookies/#optanon-toggle-display/",
+    "confidence": 1.0,
+    "discovered_at": "2025-10-08T12:15:11.146287",
+    "last_verified": null,
+    "reason": "Link analysis: Cookie Preferences",
+    "found_on_page": "https://mailchimp.com",
+    "has_email_form": false,
+    "has_unsubscribe_text": true
+  },
+  "constantcontact.com": {
+    "unsubscribe_url": "https://constantcontact.com",
+    "confidence": 0.9,
+    "discovered_at": "2025-10-08T12:15:31.268258",
+    "last_verified": null,
+    "reason": "Page content analysis: unsubscribe",
+    "found_on_page": "https://constantcontact.com",
+    "has_email_form": false,
+    "has_unsubscribe_text": true
+  },
+  "clarivate.com/privacy-center": {
+    "unsubscribe_url": "https://discover.clarivate.com/preferencecenter_en",
+    "confidence": 0.8,
+    "discovered_at": "2025-10-08T12:45:43.839355",
+    "last_verified": null,
+    "reason": "Link analysis: preference center",
+    "found_on_page": "https://clarivate.com/privacy-center",
+    "has_email_form": false,
+    "has_unsubscribe_text": true
+  },
+  "clarivate.com": {
+    "unsubscribe_url": "https://discover.clarivate.com/preferencecenter_en",
+    "confidence": 1.0,
+    "discovered_at": "2025-10-08T12:48:05.101731",
+    "last_verified": null,
+    "reason": "Link analysis: Email Preferences Center",
+    "found_on_page": "https://clarivate.com/privacy-center/notices-policies/privacy-policy/",
+    "has_email_form": false,
+    "has_unsubscribe_text": true
+  }
+}

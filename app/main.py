@@ -16,9 +16,11 @@ from app.models.domain_crawler import (
     DomainDiscoveryResult,
     DomainQueryResult
 )
-from app.services.domain_crawler_service import DomainCrawlerService
-from app.services.domain_discovery_service import DomainDiscoveryService
-from app.services.domain_storage_service import DomainStorageService
+from app.services.crawler import (
+    DomainCrawlerService,
+    DomainDiscoveryService,
+    DomainStorageService
+)
 
 
 class EmailData(BaseModel):
