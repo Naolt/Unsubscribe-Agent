@@ -10,6 +10,15 @@ from app.types.email import EmailPayload
 from pydantic import BaseModel
 
 from app.types.unsubscribe import TaskStatusResponse, TaskStatusEnum
+from app.models.domain_crawler import (
+    DomainDiscoveryRequest,
+    DomainQueryRequest,
+    DomainDiscoveryResult,
+    DomainQueryResult
+)
+from app.services.domain_crawler_service import DomainCrawlerService
+from app.services.domain_discovery_service import DomainDiscoveryService
+from app.services.domain_storage_service import DomainStorageService
 
 
 class EmailData(BaseModel):
@@ -454,3 +463,198 @@ async def get_examples():
             }
         }
     }
+
+
+# Domain Discovery Endpoints
+
+@app.post("/discover/domain", response_model=DomainDiscoveryResult)
+async def discover_domain(request: DomainDiscoveryRequest):
+    """
+    Discover unsubscribe pages for a domain using web crawling.
+    
+    This endpoint crawls a domain to find publicly available unsubscribe or email preference pages.
+    It uses breadth-first crawling to explore the website and identify pages where users can
+    submit their email to unsubscribe without requiring login or tokens.
+    
+    **Example Request:**
+    ```json
+    {
+      "domain": "spglobal.com",
+      "max_pages": 10,
+      "max_depth": 3,
+      "include_subdomains": false
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "domain": "spglobal.com",
+      "status": "completed",
+      "confident_result": {
+        "url": "https://pages.marketintelligence.spglobal.com/Unsubscribe-Preferences.html",
+        "confidence": 0.9,
+        "reason": "Page content analysis: unsubscribe",
+        "found_on_page": "https://spglobal.com/privacy-policy",
+        "has_email_form": true,
+        "has_unsubscribe_text": true
+      },
+      "possible_candidates": [...],
+      "crawl_summary": {
+        "pages_visited": 5,
+        "successful_crawls": 5,
+        "total_links_found": 23,
+        "total_processing_time_seconds": 12.5
+      },
+      "errors": [],
+      "discovered_at": "2024-01-15T10:30:00Z"
+    }
+    ```
+    """
+    try:
+        logger.info(f"Starting domain discovery for {request.domain}")
+        
+        # Create crawler and discovery service
+        async with DomainCrawlerService(timeout=10, delay=1.0) as crawler:
+            discovery_service = DomainDiscoveryService(crawler)
+            result = await discovery_service.discover_domain(request)
+            
+            # Store the result if we found a confident unsubscribe page
+            if result.confident_result:
+                storage_service = DomainStorageService()
+                storage_service.add_domain_entry(request.domain, result.confident_result)
+                logger.info(f"Stored domain entry for {request.domain}")
+            
+            return result
+            
+    except Exception as e:
+        logger.error(f"Domain discovery failed for {request.domain}: {e}")
+        raise HTTPException(status_code=500, detail=f"Domain discovery failed: {str(e)}")
+
+
+@app.get("/discover/domain/{domain}", response_model=DomainQueryResult)
+async def query_domain(domain: str, include_inactive: bool = False):
+    """
+    Query the domain index for unsubscribe pages.
+    
+    This endpoint looks up a domain in the stored index to find previously discovered
+    unsubscribe pages. It returns the unsubscribe URL and confidence score if found.
+    
+    **Example Request:**
+    ```bash
+    curl "http://localhost:8000/discover/domain/spglobal.com?include_inactive=false"
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "domain": "spglobal.com",
+      "found": true,
+      "unsubscribe_url": "https://pages.marketintelligence.spglobal.com/Unsubscribe-Preferences.html",
+      "confidence": 0.9,
+      "discovered_at": "2024-01-15T10:30:00Z",
+      "last_verified": null,
+      "query_time": "2024-01-15T11:00:00Z"
+    }
+    ```
+    """
+    try:
+        storage_service = DomainStorageService()
+        request = DomainQueryRequest(domain=domain, include_inactive=include_inactive)
+        result = storage_service.query_domain(request)
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Domain query failed for {domain}: {e}")
+        raise HTTPException(status_code=500, detail=f"Domain query failed: {str(e)}")
+
+
+@app.get("/discover/stats")
+async def get_domain_stats():
+    """
+    Get statistics about the domain index.
+    
+    Returns information about the stored domain index including total domains,
+    verification status, and confidence distribution.
+    
+    **Example Response:**
+    ```json
+    {
+      "total_domains": 150,
+      "verified_entries": 45,
+      "average_confidence": 0.82,
+      "high_confidence_entries": 120,
+      "medium_confidence_entries": 25,
+      "low_confidence_entries": 5,
+      "storage_path": "data/domain_index.json"
+    }
+    ```
+    """
+    try:
+        storage_service = DomainStorageService()
+        stats = storage_service.get_stats()
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Failed to get domain stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get domain stats: {str(e)}")
+
+
+@app.get("/discover/domains")
+async def list_domains():
+    """
+    List all domains in the index.
+    
+    Returns a list of all domains that have been discovered and stored in the index.
+    
+    **Example Response:**
+    ```json
+    {
+      "domains": ["spglobal.com", "cnn.com", "amazon.com"],
+      "count": 3
+    }
+    ```
+    """
+    try:
+        storage_service = DomainStorageService()
+        domains = storage_service.list_domains()
+        return {"domains": domains, "count": len(domains)}
+        
+    except Exception as e:
+        logger.error(f"Failed to list domains: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list domains: {str(e)}")
+
+
+@app.delete("/discover/domain/{domain}")
+async def remove_domain(domain: str):
+    """
+    Remove a domain from the index.
+    
+    This endpoint removes a domain and its unsubscribe page information from the stored index.
+    
+    **Example Request:**
+    ```bash
+    curl -X DELETE "http://localhost:8000/discover/domain/example.com"
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "message": "Domain example.com removed from index"
+    }
+    ```
+    """
+    try:
+        storage_service = DomainStorageService()
+        success = storage_service.remove_domain(domain)
+        
+        if success:
+            return {"success": True, "message": f"Domain {domain} removed from index"}
+        else:
+            return {"success": False, "message": f"Domain {domain} not found in index"}
+            
+    except Exception as e:
+        logger.error(f"Failed to remove domain {domain}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove domain: {str(e)}")
