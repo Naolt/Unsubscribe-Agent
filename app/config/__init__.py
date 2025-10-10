@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     USE_LLM_ONLY: bool = False
     HEADLESS: bool = True
+    # Browser automation LLM configuration
+    BROWSER_LLM_PROVIDER: str = "ollama"  # or "gemini"
+    BROWSER_MODEL_NAME: str = "tinyllama:1.1b"  # Model for browser automation
     
 
 settings = Settings()

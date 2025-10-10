@@ -6,7 +6,7 @@ without keeping Ollama running constantly.
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union, Mapping, Sequence
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
@@ -48,6 +48,8 @@ class GenerateResponse(BaseModel):
     model: str
 
 
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
@@ -66,25 +68,28 @@ async def chat(request: ChatRequest):
         messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
         ollama_service = get_ollama_service()
-        async with ollama_service:
-            response = await ollama_service.chat(
-                messages=messages,
-                model=request.model,
-                stream=request.stream
-            )
-            
-            # Extract content from response
-            if "message" in response and "content" in response["message"]:
-                content = response["message"]["content"]
-            elif "content" in response:
-                content = response["content"]
-            else:
-                content = str(response)
-            
-            return ChatResponse(
-                content=content,
-                model=request.model or ollama_service.default_model
-            )
+        # Don't use context manager for chat - we want to keep Ollama running for auto-stop
+        response = await ollama_service.chat(
+            messages=messages,
+            model=request.model,
+            stream=request.stream
+        )
+        
+        # Extract content from response
+        if "message" in response and "content" in response["message"]:
+            content = response["message"]["content"]
+        elif "content" in response:
+            content = response["content"]
+        else:
+            content = str(response)
+        
+        # Schedule auto-stop check after successful chat
+        await ollama_service.auto_stop_if_idle()
+        
+        return ChatResponse(
+            content=content,
+            model=request.model or ollama_service.default_model
+        )
             
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
@@ -106,17 +111,20 @@ async def generate(request: GenerateRequest):
         logger.info(f"Generate request with prompt: {request.prompt[:100]}...")
         
         ollama_service = get_ollama_service()
-        async with ollama_service:
-            response = await ollama_service.generate(
-                prompt=request.prompt,
-                model=request.model,
-                stream=request.stream
-            )
-            
-            return GenerateResponse(
-                response=response,
-                model=request.model or ollama_service.default_model
-            )
+        # Don't use context manager for generate - we want to keep Ollama running for auto-stop
+        response = await ollama_service.generate(
+            prompt=request.prompt,
+            model=request.model,
+            stream=request.stream
+        )
+        
+        # Schedule auto-stop check after successful generation
+        await ollama_service.auto_stop_if_idle()
+        
+        return GenerateResponse(
+            response=response,
+            model=request.model or ollama_service.default_model
+        )
             
     except Exception as e:
         logger.error(f"Error in generate endpoint: {e}")
@@ -128,9 +136,13 @@ async def list_models():
     """List available Ollama models"""
     try:
         ollama_service = get_ollama_service()
-        async with ollama_service:
-            models = await ollama_service.list_models()
-            return ModelListResponse(models=models)
+        # Don't use context manager for models - we want to keep Ollama running for auto-stop
+        models = await ollama_service.list_models()
+        
+        # Schedule auto-stop check after successful model listing
+        await ollama_service.auto_stop_if_idle()
+        
+        return ModelListResponse(models=models)
             
     except Exception as e:
         logger.error(f"Error listing models: {e}")
@@ -164,14 +176,14 @@ async def start_ollama():
     """Manually start Ollama server"""
     try:
         ollama_service = get_ollama_service()
-        async with ollama_service:
-            success = await ollama_service.start()
+        # Don't use context manager for start - we want to keep it running
+        success = await ollama_service.start()
+        
+        if success:
+            return {"message": "Ollama started successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to start Ollama")
             
-            if success:
-                return {"message": "Ollama started successfully"}
-            else:
-                raise HTTPException(status_code=500, detail="Failed to start Ollama")
-                
     except HTTPException:
         raise
     except Exception as e:
@@ -202,16 +214,16 @@ async def get_status():
     """Get Ollama server status"""
     try:
         ollama_service = get_ollama_service()
-        async with ollama_service:
-            is_running = await ollama_service._is_running()
-            
-            return {
-                "running": is_running,
-                "default_model": ollama_service.default_model,
-                "base_url": ollama_service.base_url,
-                "idle_timeout": ollama_service.idle_timeout
-            }
-            
+        # Don't use context manager for status check - we don't want to stop it
+        is_running = await ollama_service._is_running()
+        
+        return {
+            "running": is_running,
+            "default_model": ollama_service.default_model,
+            "base_url": ollama_service.base_url,
+            "idle_timeout": ollama_service.idle_timeout
+        }
+        
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -227,3 +239,5 @@ async def auto_stop_if_idle():
     except Exception as e:
         logger.error(f"Error in auto-stop: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+

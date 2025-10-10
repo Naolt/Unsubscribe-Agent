@@ -5,8 +5,9 @@ Automates unsubscribing from marketing/notification emails using AI-powered brow
 ## 🚀 Features
 
 - **Email Processing**: Forward emails via webhook endpoint
-- **AI-Powered**: Uses LLM to intelligently identify unsubscribe links
-- **Browser Automation**: Automated browser navigation and form filling
+- **AI-Powered**: Uses configurable LLM providers (Google Gemini, OpenAI, Anthropic) for email analysis
+- **Browser Automation**: Automated browser navigation with configurable AI models (Ollama, Gemini)
+- **Flexible Configuration**: Mix and match providers for email processing vs browser automation
 - **Task Queue**: Background processing with Celery and Redis
 - **Docker Ready**: Complete containerized setup
 - **Monitoring**: Flower dashboard for task monitoring
@@ -16,7 +17,11 @@ Automates unsubscribing from marketing/notification emails using AI-powered brow
 
 - Python 3.13+
 - Docker & Docker Compose (recommended)
-- Google API Key for LLM (configure via `.env`)
+- API Key for your chosen LLM provider (configure via `.env`)
+  - Google API Key (for Gemini)
+  - OpenAI API Key (for GPT models)
+  - Anthropic API Key (for Claude models)
+  - Ollama (for local models - no API key needed)
 
 ## 🛠️ Quick Start
 
@@ -26,8 +31,8 @@ Automates unsubscribing from marketing/notification emails using AI-powered brow
 ```bash
 git clone <repository>
 cd unsubscribe-agent
-cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY
+cp env.example .env
+# Edit .env and configure your LLM providers
 ```
 
 2. **Start services**:
@@ -175,23 +180,59 @@ curl http://localhost:8000/task/{task_id}
 
 ## ⚙️ Configuration
 
-Create `.env` file:
+Create `.env` file with your preferred LLM providers:
+
+### Quick Setup (Hybrid - Recommended)
 ```bash
-# Required
+# Email processing with Gemini
+LLM_MODEL_PROVIDER=google_genai
+LLM_MODEL_NAME=gemini-2.5-flash
 GOOGLE_API_KEY=your_google_api_key_here
 
-# Optional
+# Browser automation with Ollama (local)
+BROWSER_LLM_PROVIDER=ollama
+BROWSER_MODEL_NAME=llama3.2:3b
+
+# Optional settings
 LOG_LEVEL=INFO
 REDIS_URL=redis://localhost:6379
 USE_LLM_ONLY=false
 HEADLESS=true
 ```
 
+### All-Gemini Setup
+```bash
+# Use Gemini for both email processing and browser automation
+LLM_MODEL_PROVIDER=google_genai
+LLM_MODEL_NAME=gemini-2.5-flash
+GOOGLE_API_KEY=your_google_api_key_here
+BROWSER_LLM_PROVIDER=gemini
+BROWSER_MODEL_NAME=gemini-2.5-flash
+```
+
+### All-Local Setup
+```bash
+# Ollama for browser automation (external provider still needed for email)
+LLM_MODEL_PROVIDER=google_genai
+LLM_MODEL_NAME=gemini-2.5-flash
+GOOGLE_API_KEY=your_google_api_key_here
+BROWSER_LLM_PROVIDER=ollama
+BROWSER_MODEL_NAME=tinyllama:1.1b
+```
+
+For complete configuration options, see [LLM Configuration Guide](docs/LLM_CONFIG.md).
+
 ## 🧪 Testing
 
 ### Quick Test
 ```bash
 curl -X POST http://localhost:8000/test
+```
+
+### Browser Automation Test
+```bash
+# Test browser automation with your configured model
+uv run test_browser_use.py
 ```
 
 ### Full Test
@@ -204,11 +245,16 @@ curl http://localhost:8000/examples
 
 ## 🔍 How It Works
 
-1. **Email Processing**: Extracts unsubscribe links from forwarded emails
-2. **Link Analysis**: Uses LLM to identify the best unsubscribe links
-3. **Browser Automation**: Launches browser and navigates to unsubscribe pages
+1. **Email Processing**: Extracts unsubscribe links from forwarded emails using configurable LLM providers
+2. **Link Analysis**: Uses AI to intelligently identify the best unsubscribe links
+3. **Browser Automation**: Launches browser and navigates to unsubscribe pages using configurable AI models
 4. **Form Filling**: Automatically fills forms and clicks unsubscribe buttons
 5. **Result Tracking**: Returns detailed results for each attempt
+
+### AI Model Usage
+- **Email Analysis**: Uses external LLM providers (Gemini, GPT, Claude) to analyze email content and identify unsubscribe links
+- **Browser Automation**: Uses configurable models (Ollama for local, Gemini for external) to control browser interactions
+- **Flexible Setup**: Mix and match providers based on your needs (privacy, cost, performance)
 
 ## 🚨 Important Notes
 
@@ -216,6 +262,8 @@ curl http://localhost:8000/examples
 - **User-Specific Links**: Each unsubscribe link is unique and cannot be cached
 - **Browser Automation**: Requires proper browser setup (handled automatically in Docker)
 - **Rate Limiting**: Built-in rate limiting to avoid overwhelming unsubscribe pages
+- **Model Configuration**: Choose your AI models based on privacy, cost, and performance needs
+- **Local vs External**: Use Ollama for local privacy or external providers for better performance
 
 ## 🛠️ Development
 

@@ -13,6 +13,7 @@ from app.routers.core_router import router as core_router
 from app.routers.email_router import router as email_router
 from app.routers.domain_router import router as domain_router
 from app.routers.ollama_router import router as ollama_router
+from app.routers.ollama_api_router import router as ollama_api_router
 from app.routers.test_router import router as test_router
 
 app = FastAPI(
@@ -56,7 +57,7 @@ app = FastAPI(
       -d '{"domain": "example.com", "max_pages": 10}'
     ```
     
-    **4. Use local AI models:**
+    **4. Use local AI models (TinyLlama 1.1B):**
     ```bash
     curl -X POST "http://localhost:8000/ollama/chat" \\
       -H "Content-Type: application/json" \\
@@ -71,4 +72,5 @@ app = FastAPI(
 app.include_router(email_router)
 app.include_router(domain_router)
 app.include_router(ollama_router)
+app.include_router(ollama_api_router)  # Ollama-compatible API endpoints
 app.include_router(test_router)

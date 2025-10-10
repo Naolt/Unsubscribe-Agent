@@ -1199,6 +1199,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-ollama"
+version = "0.3.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "ollama" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/73/c9/ff996fc5fa2d8d23136f07c56e88a1013fe1e03a35ef3e65899baa73c49e/langchain_ollama-0.3.10.tar.gz", hash = "sha256:5d942d331c44351bae5c5c5965603ceb20b0ee4d70082290f4b15bc638559756", size = 35771, upload-time = "2025-10-02T15:53:20.974Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/f2/d87767a106021206fb53faf7ae4517d365d353dc29a1649b9f3e47eef940/langchain_ollama-0.3.10-py3-none-any.whl", hash = "sha256:7550792872e8f86d362568e9ceb0f8085428bc59946c7b44e726358ba4b280f9", size = 27646, upload-time = "2025-10-02T15:53:19.89Z" },
+]
+
+[[package]]
 name = "langchain-text-splitters"
 version = "0.3.11"
 source = { registry = "https://pypi.org/simple" }
@@ -5010,6 +5023,7 @@ dependencies = [
     { name = "flower" },
     { name = "langchain", extra = ["google-genai"] },
     { name = "langchain-google-genai" },
+    { name = "langchain-ollama" },
     { name = "lxml" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -5028,6 +5042,7 @@ requires-dist = [
     { name = "flower", specifier = ">=2.0.0" },
     { name = "langchain", extras = ["google-genai"], specifier = ">=0.3.27" },
     { name = "langchain-google-genai", specifier = ">=2.1.12" },
+    { name = "langchain-ollama", specifier = ">=0.3.10" },
     { name = "lxml", specifier = ">=6.0.1" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=0.23.8" },

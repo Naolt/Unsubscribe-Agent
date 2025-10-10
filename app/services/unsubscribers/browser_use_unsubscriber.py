@@ -2,7 +2,8 @@ import logging
 from app.config import settings
 from app.services.unsubscribers.base import BaseUnsubscriber
 from app.types.unsubscribe import UnsubscribeMethod, UnsubscriberResult
-from browser_use import Agent, Browser, ChatGoogle, Tools, ActionResult, BrowserSession
+from browser_use import Agent, Browser, Tools, ActionResult, BrowserSession
+from app.services.llm.browser_llm_factory import get_configured_browser_llm
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,9 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
         """
         try:
             # 1. Initialize LLM compatible with browser_use Agent
-            llm = ChatGoogle(model="gemini-2.5-flash")
+            # Using configurable provider (Ollama or Gemini)
+            llm = get_configured_browser_llm()
+            logger.info(f"Using browser LLM provider: {settings.BROWSER_LLM_PROVIDER}")
 
             # 2. Launch browser
             logger.info(f"Headless: {settings.HEADLESS}")
@@ -33,7 +36,7 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
 
             # 3. Define the prompt for the agent
             prompt = f"""
-                        You are an automated assistant tasked with unsubscribing from marketing or notification emails. 
+            You are an automated assistant, tasked with unsubscribing from marketing or notification emails. 
             You are given a single HTTPS link that may lead to an unsubscribe page. 
             You also have the email of the user who wants to unsubscribe. Your goal is to unsubscribe the user fully and safely. 
 
@@ -52,6 +55,7 @@ class BrowserUseUnsubscriber(BaseUnsubscriber):
             - If the page requests authentication, the agent cannot sign in. Stop the flow and 
             return a message indicating that authentication is required.
             - Avoid suspicious links and never enter credentials on untrusted sites.
+            - Be concise and efficient in your actions to minimize processing time.
             """
 
             # 4. Create and run the agent

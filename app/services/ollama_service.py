@@ -9,10 +9,11 @@ import asyncio
 import logging
 import subprocess
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from pathlib import Path
 import aiohttp
 import json
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +24,12 @@ class OllamaService:
     def __init__(self, 
                  ollama_path: str = "ollama",
                  base_url: str = "http://localhost:11434",
-                 default_model: str = "llama3.2:3b",
+                 default_model: Optional[str] = None,
                  timeout: int = 30,
                  idle_timeout: int = 300):  # 5 minutes
         self.ollama_path = ollama_path
         self.base_url = base_url
-        self.default_model = default_model
+        self.default_model = default_model or settings.BROWSER_MODEL_NAME
         self.timeout = timeout
         self.idle_timeout = idle_timeout
         
@@ -69,16 +70,29 @@ class OllamaService:
                 text=True
             )
             
-            # Wait for server to be ready
-            max_retries = 30
-            for i in range(max_retries):
-                if await self._is_running():
+            # Check if process started successfully
+            if self._process.poll() is not None:
+                # Process has already terminated
+                stdout, stderr = self._process.communicate()
+                logger.error(f"Ollama process failed to start. stdout: {stdout}, stderr: {stderr}")
+                return False
+            
+            # Wait for server to be ready (simplified approach)
+            import time
+            time.sleep(3)  # Give it time to start
+            
+            # Test if it's running using requests (like our simple test)
+            try:
+                import requests
+                response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+                if response.status_code == 200:
                     logger.info("Ollama server started successfully")
                     self._last_used = time.time()
                     return True
-                await asyncio.sleep(1)
+            except:
+                pass
             
-            logger.error("Failed to start Ollama server - timeout")
+            logger.error("Failed to start Ollama server - not responding")
             return False
             
         except Exception as e:
@@ -102,11 +116,12 @@ class OllamaService:
     async def _is_running(self) -> bool:
         """Check if Ollama server is running"""
         try:
-            if not self._session:
-                return False
-            
-            async with self._session.get(f"{self.base_url}/api/tags") as response:
-                return response.status == 200
+            # Create a temporary session for the check
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as temp_session:
+                async with temp_session.get(f"{self.base_url}/api/tags") as response:
+                    return response.status == 200
         except:
             return False
     
@@ -121,7 +136,12 @@ class OllamaService:
     async def chat(self, 
                    messages: List[Dict[str, str]], 
                    model: Optional[str] = None,
-                   stream: bool = False) -> Dict[str, Any]:
+                   stream: bool = False,
+                   tools: Optional[List[Dict[str, Any]]] = None,
+                   think: Optional[bool] = None,
+                   format: Optional[Union[str, dict]] = None,
+                   options: Optional[Dict[str, Any]] = None,
+                   keep_alive: Optional[Union[float, str]] = None) -> Dict[str, Any]:
         """
         Send chat request to Ollama
         
@@ -129,6 +149,11 @@ class OllamaService:
             messages: List of message dicts with 'role' and 'content'
             model: Model name (defaults to self.default_model)
             stream: Whether to stream the response
+            tools: List of tools for function calling
+            think: Enable thinking mode
+            format: Output format (e.g., 'json' or JSON schema)
+            options: Model options (temperature, top_p, etc.)
+            keep_alive: Keep model in memory for specified duration
             
         Returns:
             Response from Ollama API
@@ -136,12 +161,30 @@ class OllamaService:
         if not await self.ensure_running():
             raise RuntimeError("Failed to start Ollama server")
         
+        # Ensure session is created
+        if not self._session:
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.timeout)
+            )
+        
         model = model or self.default_model
         payload = {
             "model": model,
             "messages": messages,
             "stream": stream
         }
+        
+        # Add optional parameters if provided
+        if tools is not None:
+            payload["tools"] = tools
+        if think is not None:
+            payload["think"] = think
+        if format is not None:
+            payload["format"] = format
+        if options is not None:
+            payload["options"] = options
+        if keep_alive is not None:
+            payload["keep_alive"] = keep_alive
         
         try:
             async with self._session.post(
@@ -188,6 +231,12 @@ class OllamaService:
         if not await self.ensure_running():
             raise RuntimeError("Failed to start Ollama server")
         
+        # Ensure session is created
+        if not self._session:
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.timeout)
+            )
+        
         model = model or self.default_model
         payload = {
             "model": model,
@@ -227,6 +276,12 @@ class OllamaService:
         """List available models"""
         if not await self.ensure_running():
             raise RuntimeError("Failed to start Ollama server")
+        
+        # Ensure session is created
+        if not self._session:
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.timeout)
+            )
         
         try:
             async with self._session.get(f"{self.base_url}/api/tags") as response:
