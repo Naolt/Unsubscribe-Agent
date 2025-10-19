@@ -32,10 +32,20 @@
   "clarivate.com": {
     "unsubscribe_url": "https://discover.clarivate.com/preferencecenter_en",
     "confidence": 1.0,
-    "discovered_at": "2025-10-08T12:48:05.101731",
+    "discovered_at": "2025-10-19T15:22:36.173444",
     "last_verified": null,
     "reason": "Link analysis: Email Preferences Center",
     "found_on_page": "https://clarivate.com/privacy-center/notices-policies/privacy-policy/",
+    "has_email_form": false,
+    "has_unsubscribe_text": true
+  },
+  "inclusivedesigntoolkit.com": {
+    "unsubscribe_url": "https://inclusivedesigntoolkit.com/unsubscribe.html",
+    "confidence": 1.0,
+    "discovered_at": "2025-10-19T16:10:29.326640",
+    "last_verified": null,
+    "reason": "Link analysis: Unsubscribe form",
+    "found_on_page": "https://inclusivedesigntoolkit.com",
     "has_email_form": false,
     "has_unsubscribe_text": true
   }

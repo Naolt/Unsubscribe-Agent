@@ -40,7 +40,7 @@ def create_browser_llm(
     
     if provider.lower() == "ollama":
         return _create_ollama_llm(model_name, **kwargs)
-    elif provider.lower() == "gemini":
+    elif provider.lower() in "google_genai":
         return _create_gemini_llm(model_name, **kwargs)
     else:
         raise ValueError(f"Unsupported browser LLM provider: {provider}. Supported providers: ollama, gemini")

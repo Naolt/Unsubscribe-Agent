@@ -52,49 +52,54 @@ class DomainDiscoveryService:
         top_candidates: List[UnsubscribeCandidate] = []
         max_candidates_to_track = 10  # Keep top 10 candidates
         
-        # Crawl pages using breadth-first approach
-        while urls_to_crawl and len(crawl_results) < request.max_pages:
-            url = urls_to_crawl.popleft()  # FIFO - breadth-first
-            
-            if url in visited_urls:
-                continue
-            
-            visited_urls.add(url)
-            
-            try:
-                # Crawl the current URL
-                result = await self.crawler.crawl(url)
-                crawl_results.append(result)
+        # Create a new crawler instance for this request to avoid session conflicts
+        crawler = DomainCrawlerService(timeout=self.crawler.timeout, delay=self.crawler.delay)
+        
+        # Use the crawler with async context manager to properly initialize the session
+        async with crawler:
+            # Crawl pages using breadth-first approach
+            while urls_to_crawl and len(crawl_results) < request.max_pages:
+                url = urls_to_crawl.popleft()  # FIFO - breadth-first
                 
-                if not result.success:
-                    errors.append(f"Failed to crawl {url}: {result.error_message}")
+                if url in visited_urls:
                     continue
                 
-                # Add delay between requests
-                if len(crawl_results) > 1:  # Don't delay the first request
-                    await asyncio.sleep(self.crawler.delay)
+                visited_urls.add(url)
                 
-                # Find promising links to crawl next
-                # Extract just the domain part (remove path if present)
-                base_domain = request.domain.split('/')[0]
-                promising_links = self._filter_promising_links(result.links_found, base_domain)
-                
-                # Add promising links to queue (limit to avoid too many URLs)
-                for link in promising_links[:20]:  # Limit to 20 new links per page
-                    if link.href not in visited_urls and link.href not in urls_to_crawl:
-                        urls_to_crawl.append(link.href)
-                
-                # Update top candidates with new findings from this page
-                new_candidates = self._extract_candidates_from_page(result)
-                top_candidates = self._update_top_candidates(top_candidates, new_candidates, max_candidates_to_track)
-                
-                logger.info(f"Crawled {url}: found {len(result.links_found)} links, added {len(promising_links[:20])} to queue, {len(new_candidates)} new candidates")
-                
-            except Exception as e:
-                error_msg = f"Exception crawling {url}: {str(e)}"
-                logger.error(error_msg)
-                errors.append(error_msg)
-                continue
+                try:
+                    # Crawl the current URL
+                    result = await crawler.crawl(url)
+                    crawl_results.append(result)
+                    
+                    if not result.success:
+                        errors.append(f"Failed to crawl {url}: {result.error_message}")
+                        continue
+                    
+                    # Add delay between requests
+                    if len(crawl_results) > 1:  # Don't delay the first request
+                        await asyncio.sleep(crawler.delay)
+                    
+                    # Find promising links to crawl next
+                    # Extract just the domain part (remove path if present)
+                    base_domain = request.domain.split('/')[0]
+                    promising_links = self._filter_promising_links(result.links_found, base_domain)
+                    
+                    # Add promising links to queue (limit to avoid too many URLs)
+                    for link in promising_links[:20]:  # Limit to 20 new links per page
+                        if link.href not in visited_urls and link.href not in urls_to_crawl:
+                            urls_to_crawl.append(link.href)
+                    
+                    # Update top candidates with new findings from this page
+                    new_candidates = self._extract_candidates_from_page(result)
+                    top_candidates = self._update_top_candidates(top_candidates, new_candidates, max_candidates_to_track)
+                    
+                    logger.info(f"Crawled {url}: found {len(result.links_found)} links, added {len(promising_links[:20])} to queue, {len(new_candidates)} new candidates")
+                    
+                except Exception as e:
+                    error_msg = f"Exception crawling {url}: {str(e)}"
+                    logger.error(error_msg)
+                    errors.append(error_msg)
+                    continue
         
         # Determine the best result from our tracked candidates
         confident_result = self._find_best_candidate(top_candidates)
