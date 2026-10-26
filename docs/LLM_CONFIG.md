@@ -95,7 +95,7 @@ GOOGLE_API_KEY=your_key_here
 # Using Google Gemini for both email processing and browser automation
 LLM_MODEL_PROVIDER=google_genai
 LLM_MODEL_NAME=gemini-2.5-flash
-GOOGLE_API_KEY=AIzaSyDUcc3lVUzIV6_xRRZUbN_hnmTT-KW8b5Q
+GOOGLE_API_KEY=your_google_api_key_here  # set in .env, never commit real keys
 BROWSER_LLM_PROVIDER=gemini
 BROWSER_MODEL_NAME=gemini-2.5-flash
 LOG_LEVEL=INFO
