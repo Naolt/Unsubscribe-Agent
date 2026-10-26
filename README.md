@@ -29,9 +29,9 @@ Automates unsubscribing from marketing/notification emails using AI-powered brow
 
 1. **Clone and setup**:
 ```bash
-git clone <repository>
-cd unsubscribe-agent
-cp env.example .env
+git clone https://github.com/Naolt/Unsubscribe-Agent.git
+cd Unsubscribe-Agent
+cp .env.example .env
 # Edit .env and configure your LLM providers
 ```
 
@@ -227,12 +227,6 @@ For complete configuration options, see [LLM Configuration Guide](docs/LLM_CONFI
 ### Quick Test
 ```bash
 curl -X POST http://localhost:8000/test
-```
-
-### Browser Automation Test
-```bash
-# Test browser automation with your configured model
-uv run test_browser_use.py
 ```
 
 ### Full Test
